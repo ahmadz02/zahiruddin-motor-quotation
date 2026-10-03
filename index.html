@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSI Wealth Planners - Motor Takaful Quotation</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ===== Supabase connection (standalone) =====
+  const SUPABASE_URL = 'https://ppcxuptjzhrqkcdokryk.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_kDTuxJSCyWeIxEa-1c3Aug_-Cs5S7Fq';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .brand-navy { color: #212F6E; }
+  .bg-brand-navy { background-color: #212F6E; }
+  .bg-brand-gold { background-color: #FFCB08; }
+  .text-brand-gold { color: #FFCB08; }
+  .border-brand-navy { border-color: #212F6E; }
+  .ring-brand { --tw-ring-color: #212F6E; }
+  .field { width:100%; padding:.6rem .85rem; border-radius:.75rem; border:1px solid #cbd5e1; font-size:.875rem; background:#fff; }
+  .field:focus { outline:none; border-color:#212F6E; box-shadow:0 0 0 2px rgba(33,47,110,.18); }
+  .field-label { display:block; font-size:.72rem; font-weight:600; color:#334155; margin-bottom:.3rem; }
+  .money { text-align:right; font-variant-numeric: tabular-nums; }
+  input[type=number]::-webkit-inner-spin-button { opacity:.4; }
+  .locked { opacity:.45; pointer-events:none; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+
+  <header id="app-header" class="bg-brand-navy text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-start space-x-3">
+        <div class="bg-white/10 p-2 rounded-lg text-brand-gold"><i class="fa-solid fa-car-side text-xl"></i></div>
+        <div>
+          <h1 class="font-bold text-lg leading-none">TSI Wealth Planners</h1>
+          <span class="text-xs text-slate-300">Motor Takaful Quotation</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+      </div>
+    </div>
+  </header>
+
+  <div id="toast-container" class="fixed top-20 right-4 z-[60] flex flex-col space-y-2 max-w-sm"></div>
+
+  <main id="app-main" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">Motor Takaful Quotation</h2>
+        <p class="text-slate-500 text-sm mt-1">Prepare motor takaful quotations, record the client's response, and create renewal quotations before expiry.</p>
+      </div>
+      <button onclick="openProspectModal()" class="inline-flex items-center justify-center bg-brand-navy hover:opacity-90 text-white font-medium px-5 py-2.5 rounded-xl shadow-sm space-x-2">
+        <i class="fa-solid fa-plus"></i><span>New Prospect</span>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div><p class="text-xs text-slate-500">Awaiting Response</p><p id="stat-pending" class="text-xl font-bold text-slate-800">0</p></div>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
+        <div><p class="text-xs text-slate-500">Accepted</p><p id="stat-accepted" class="text-xl font-bold text-slate-800">0</p></div>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div><p class="text-xs text-slate-500">Declined</p><p id="stat-declined" class="text-xl font-bold text-slate-800">0</p></div>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><i class="fa-solid fa-comment-slash"></i></div>
+        <div><p class="text-xs text-slate-500">No Respond</p><p id="stat-norespond" class="text-xl font-bold text-slate-800">0</p></div>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center"><i class="fa-solid fa-bell"></i></div>
+        <div><p class="text-xs text-slate-500">Renewal Due</p><p id="stat-renewal" class="text-xl font-bold text-slate-800">0</p></div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap gap-3 justify-between items-center bg-slate-50/50">
+        <h3 class="font-semibold text-slate-800">Quotations</h3>
+        <div class="flex flex-wrap gap-2">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input id="search-input" type="search" placeholder="Search IFAR, prospect, vehicle, ref no." class="pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-sm w-64 bg-white">
+          </div>
+          <select id="status-filter" class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white">
+            <option value="">All statuses</option>
+            <option value="PENDING">Awaiting response</option>
+            <option value="ACCEPTED">Accepted</option>
+            <option value="DECLINED">Declined</option>
+            <option value="NO_RESPOND">No Respond</option>
+            <option value="RENEWAL">Renewal due</option>
+          </select>
+          <div class="flex items-center gap-1 border border-slate-300 rounded-lg bg-white pl-2">
+            <i class="fa-regular fa-calendar text-slate-400 text-xs"></i>
+            <select id="date-basis" title="Which date to filter by" class="py-1.5 pr-1 text-sm bg-transparent border-none focus:outline-none">
+              <option value="quotation_date">Quotation date</option>
+              <option value="responded_at">Response date</option>
+              <option value="coverage_end">Expiry date</option>
+            </select>
+            <select id="month-filter" class="py-1.5 px-1 text-sm bg-transparent border-l border-slate-200 focus:outline-none">
+              <option value="">All months</option>
+              <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+              <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+              <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+            </select>
+            <select id="year-filter" class="py-1.5 pl-1 pr-2 text-sm bg-transparent border-l border-slate-200 focus:outline-none">
+              <option value="">All years</option>
+            </select>
+          </div>
+          <button type="button" onclick="resetFilters()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100">Reset</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-slate-500 text-xs">
+            <tr>
+              <th class="px-5 py-3 font-semibold">IFAR Name</th>
+              <th class="px-5 py-3 font-semibold">Prospect Name</th>
+              <th class="px-5 py-3 font-semibold">Vehicle Number</th>
+              <th class="px-5 py-3 font-semibold">Quotation Date</th>
+              <th class="px-5 py-3 font-semibold">Status</th>
+              <th class="px-5 py-3 font-semibold">Renewal Reminder</th>
+              <th class="px-5 py-3 font-semibold text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="prospect-table-body" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+      <div class="px-6 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 text-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-500">Rows per page</span>
+          <select id="page-size" class="border border-slate-300 rounded-lg px-2 py-1 text-sm bg-white">
+            <option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option>
+          </select>
+          <span id="range-info" class="text-slate-500"></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="prev-page" class="border border-slate-300 px-3 py-1.5 rounded-lg disabled:opacity-40">Prev</button>
+          <span id="page-info" class="text-slate-600"></span>
+          <button id="next-page" class="border border-slate-300 px-3 py-1.5 rounded-lg disabled:opacity-40">Next</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ NEW / EDIT PROSPECT MODAL ============ -->
+  <div id="modal-prospect" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-start justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl relative my-8">
+      <div class="flex justify-between items-center border-b border-slate-100 px-6 sm:px-8 py-5">
+        <div>
+          <h3 id="modal-title" class="text-xl font-bold text-slate-900">New Prospect</h3>
+          <p id="modal-subtitle" class="text-xs text-slate-500 mt-0.5">Motor Takaful Quotation</p>
+        </div>
+        <button onclick="closeProspectModal()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="form-prospect" onsubmit="handleViewQuotation(event)" class="px-6 sm:px-8 py-6 space-y-8" novalidate>
+
+        <!-- IFAR -->
+        <section class="space-y-3">
+          <h4 class="text-sm font-bold brand-navy flex items-center gap-2"><i class="fa-solid fa-user-tie"></i> IFAR</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label class="field-label">IFAR Name *</label><input id="in-ifar-name" class="field" placeholder="e.g. Nur Aisyah binti Rahman"></div>
+            <div><label class="field-label">IFAR Phone Number *</label><input id="in-ifar-phone" type="tel" class="field" placeholder="e.g. 012-345 6789"></div>
+          </div>
+        </section>
+
+        <!-- PROSPECT -->
+        <section class="space-y-3">
+          <h4 class="text-sm font-bold brand-navy flex items-center gap-2"><i class="fa-solid fa-id-card"></i> Prospect</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label class="field-label">Name of Vehicle Owner *</label><input id="in-owner-name" class="field" placeholder="As per IC / Passport"></div>
+            <div><label class="field-label">Identification Number (IC / Passport) *</label><input id="in-owner-id" class="field uppercase" placeholder="e.g. 901218-08-5392"></div>
+            <div><label class="field-label">Vehicle Registration Number *</label><input id="in-reg-no" class="field uppercase" placeholder="e.g. AML3127"></div>
+            <div><label class="field-label">Type of Vehicle *</label>
+              <select id="in-vehicle-type" class="field" translate="no">
+                <option value="">Select type</option><option value="Sedan">Sedan</option><option value="SUV">SUV</option><option value="MPV">MPV</option><option value="Motorcycle">Motorcycle</option>
+              </select>
+            </div>
+            <div><label class="field-label">Vehicle Brand and Model *</label><input id="in-vehicle-model" class="field" placeholder="e.g. Toyota Corolla Cross 1.8V"></div>
+            <div><label class="field-label">Vehicle Engine Capacity</label><input id="in-engine-cc" class="field" placeholder="e.g. 1798 cc"></div>
+            <div><label class="field-label">Vehicle Usage Type *</label>
+              <select id="in-usage-type" class="field" translate="no"><option value="">Select usage</option><option value="Personal">Personal</option><option value="Company">Company</option></select>
+            </div>
+            <div><label class="field-label">NCD</label><input id="in-ncd" class="field" placeholder="e.g. 38.33%"></div>
+            <div class="sm:col-span-2"><label class="field-label">Vehicle Address</label><textarea id="in-vehicle-address" rows="2" class="field" placeholder="Address where the vehicle is kept"></textarea></div>
+            <div><label class="field-label">Prospect Email Address</label><input id="in-prospect-email" type="email" class="field" placeholder="e.g. fatehah@example.com"></div>
+            <div><label class="field-label">Prospect Phone Number</label><input id="in-prospect-phone" type="tel" class="field" placeholder="e.g. 013-456 7890"></div>
+            <div class="sm:col-span-2">
+              <label class="field-label">Vehicle Coverage Term</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <span class="block text-[11px] text-slate-500 mb-1">From</span>
+                  <input id="in-cov-from" type="date" class="field cursor-pointer" onclick="openDatePicker(this)" onchange="onCoverageFromChange()">
+                </div>
+                <div>
+                  <span class="block text-[11px] text-slate-500 mb-1">To</span>
+                  <input id="in-cov-to" type="date" class="field cursor-pointer" onclick="openDatePicker(this)" onchange="updateCoverageTerm()">
+                </div>
+              </div>
+              <input id="in-coverage-term" type="hidden">
+              <p class="text-[11px] text-slate-400 mt-1">Picking the start date fills the end date one year later. You can still change it.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- PROPOSAL -->
+        <section class="space-y-5">
+          <h4 class="text-sm font-bold brand-navy flex items-center gap-2"><i class="fa-solid fa-file-invoice-dollar"></i> Proposal</h4>
+          <p class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">I would like to submit the following proposal for your review and consideration:</p>
+
+          <div>
+            <p class="text-xs font-semibold text-slate-700 mb-2">Part 1 · Takaful operators to quote</p>
+            <div id="part1-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold text-slate-700 mb-2">Part 2 · Coverage options and pricing</p>
+            <div id="part2-container" class="space-y-5"></div>
+          </div>
+        </section>
+
+        <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+          <p class="mr-auto self-center text-[11px] text-slate-400">Nothing is saved until you click Save on the quotation form.</p>
+          <button type="button" onclick="closeProspectModal()" class="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 text-sm font-medium">Cancel</button>
+          <button type="submit" id="save-prospect-btn" class="px-5 py-2.5 rounded-xl bg-brand-navy hover:opacity-90 text-white text-sm font-medium shadow-sm flex items-center space-x-2">
+            <i class="fa-solid fa-file-invoice"></i><span id="save-prospect-label">View Quotation Form</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script>
+  // ---------- Constants ----------
+  const OPERATORS = [
+    { name: 'Etiqa General Takaful Berhad',         short: 'Etiqa',            color: '#E8A317', tint: '#FDF3D7' },
+    { name: 'Syarikat Takaful Malaysia Am Berhad',  short: 'Takaful Malaysia', color: '#2E9E4F', tint: '#DFF3E5' },
+    { name: 'Takaful Ikhlas General Berhad',        short: 'Takaful Ikhlas',   color: '#7CB82F', tint: '#EAF5DC' },
+    { name: 'Zurich General Takaful Berhad',        short: 'Zurich Takaful',   color: '#1F63B5', tint: '#DCE8F7' }
+  ];
+  const COVERAGE_OPTIONS = [
+    { code: 'COMP',       name: 'Comprehensive' },
+    { code: 'COMP_SP',    name: 'Comprehensive + Special Perils' },
+    { code: 'COMP_SP_WS', name: 'Comprehensive + Special Perils + Windscreen' },
+    { code: 'COMP_WS',    name: 'Comprehensive + Windscreen' },
+    { code: 'TP',         name: 'Third Party' },
+    { code: 'TPT',        name: 'Third Party and Theft' }
+  ];
+  const DEFAULT_ADMIN_FEE = 20;
+  const QUOTE_PAGE = 'motor-proposal-view.html';   // quotation form page
+  const DRAFT_KEY = 'mtq-draft';                   // unsaved form → quotation page
+  const RENEWAL_WINDOW_DAYS = 60;
+
+
+  // ---------- State ----------
+  let proposals = [];
+  let currentPage = 1;
+  let formState = null;          // Part 1 / Part 2 working state
+  let editingId = null;          // row being edited (null = new)
+  let renewedFrom = null;        // row a renewal was duplicated from
+  let previousSelection = null;  // keep the chosen option when editing
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('page-size').addEventListener('input', () => { currentPage = 1; renderTable(); });
+    document.getElementById('prev-page').addEventListener('click', () => { currentPage--; renderTable(); });
+    document.getElementById('next-page').addEventListener('click', () => { currentPage++; renderTable(); });
+    document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; renderTable(); });
+    ['status-filter', 'date-basis', 'month-filter', 'year-filter'].forEach(id =>
+      document.getElementById(id).addEventListener('input', () => { currentPage = 1; renderTable(); }));
+    ['in-reg-no', 'in-owner-id'].forEach(id => document.getElementById(id).addEventListener('input', e => {
+      const pos = e.target.selectionStart; e.target.value = e.target.value.toUpperCase(); e.target.setSelectionRange(pos, pos);
+    }));
+
+    await loadProposals();
+    restoreDraftIfReturning();
+  });
+
+  // ---------- Data ----------
+  async function loadProposals() {
+    const { data, error } = await supabaseClient.from('motor_proposals').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error(error);
+      showToast(`Unable to load quotations: ${supabaseErrorText(error)}`, 'error');
+      proposals = [];
+    } else {
+      proposals = data || [];
+    }
+    populateYearFilter();
+    renderTable();
+    updateStats();
+  }
+
+  // PENDING | ACCEPTED | DECLINED | NO_RESPOND
+  function effectiveStatus(p) {
+    if (p.status === 'ACCEPTED' || p.status === 'DECLINED') return p.status;
+    if (p.coverage_start && todayIso() >= p.coverage_start) return 'NO_RESPOND';
+    return 'PENDING';
+  }
+
+  function renewalOf(p) {
+    return proposals.find(x => x.renewed_from === p.id) || null;
+  }
+
+  function renewalInfo(p) {
+    if (!p.coverage_end) return { state: 'none' };
+    const child = renewalOf(p);
+    if (child) return { state: 'renewed', child };
+    const days = daysBetween(todayIso(), p.coverage_end);
+    return { state: days <= RENEWAL_WINDOW_DAYS ? 'due' : 'later', days };
+  }
+
+  function filteredProposals() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    const st = document.getElementById('status-filter').value;
+    const basis = document.getElementById('date-basis').value;
+    const month = document.getElementById('month-filter').value;
+    const year = document.getElementById('year-filter').value;
+    return proposals.filter(p => {
+      if (st === 'RENEWAL') { if (renewalInfo(p).state !== 'due') return false; }
+      else if (st && effectiveStatus(p) !== st) return false;
+      if (month || year) {
+        const raw = basis === 'quotation_date' ? (p.quotation_date || p.created_at) : p[basis];
+        if (!raw) return false;
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(raw + 'T00:00:00') : new Date(raw);
+        if (month && d.getMonth() + 1 !== Number(month)) return false;
+        if (year && d.getFullYear() !== Number(year)) return false;
+      }
+      if (!q) return true;
+      return [p.ifar_name, p.owner_name, p.vehicle_reg_no, p.reference_no].some(v => String(v || '').toLowerCase().includes(q));
+    });
+  }
+
+  function populateYearFilter() {
+    const sel = document.getElementById('year-filter');
+    const current = sel.value;
+    const years = new Set([new Date().getFullYear()]);
+    proposals.forEach(p => [p.quotation_date || p.created_at, p.responded_at, p.coverage_end].forEach(v => {
+      if (v) years.add(new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v).getFullYear());
+    }));
+    sel.innerHTML = '<option value="">All years</option>' +
+      [...years].sort((a, b) => b - a).map(y => `<option value="${y}">${y}</option>`).join('');
+    if ([...sel.options].some(o => o.value === current)) sel.value = current;
+  }
+
+  function resetFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('date-basis').value = 'quotation_date';
+    document.getElementById('month-filter').value = '';
+    document.getElementById('year-filter').value = '';
+    currentPage = 1;
+    renderTable();
+  }
+
+  function updateStats() {
+    const count = s => proposals.filter(p => effectiveStatus(p) === s).length;
+    document.getElementById('stat-pending').textContent = count('PENDING');
+    document.getElementById('stat-accepted').textContent = count('ACCEPTED');
+    document.getElementById('stat-declined').textContent = count('DECLINED');
+    document.getElementById('stat-norespond').textContent = count('NO_RESPOND');
+    document.getElementById('stat-renewal').textContent = proposals.filter(p => renewalInfo(p).state === 'due').length;
+  }
+
+  // ---------- Table ----------
+  function statusCell(p) {
+    const st = effectiveStatus(p);
+    const undo = `<button onclick="resetResponse('${p.id}')" title="Undo response" class="ml-1 p-1 text-slate-400 hover:text-slate-700"><i class="fa-solid fa-rotate-left text-[11px]"></i></button>`;
+    if (st === 'ACCEPTED') return `<div class="flex items-center"><span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1.5 text-[10px]"></i>Accepted on ${fmtDMY(p.responded_at)}</span>${undo}</div>`;
+    if (st === 'DECLINED') return `<div class="flex items-center"><span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1.5 text-[10px]"></i>Declined on ${fmtDMY(p.responded_at)}</span>${undo}</div>`;
+    if (st === 'NO_RESPOND') return `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap" title="No response before the coverage start date ${fmtDMY(p.coverage_start)}"><i class="fa-solid fa-comment-slash mr-1.5 text-[10px]"></i>No Respond</span>`;
+    return `<div class="flex gap-1.5">
+      <button onclick="setResponse('${p.id}','ACCEPTED')" class="px-2.5 py-1 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-600 hover:text-white text-xs font-semibold">Accepted</button>
+      <button onclick="setResponse('${p.id}','DECLINED')" class="px-2.5 py-1 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-600 hover:text-white text-xs font-semibold">Declined</button>
+    </div>`;
+  }
+
+  function renewalCell(p) {
+    const r = renewalInfo(p);
+    if (r.state === 'none') return '<span class="text-slate-300 text-xs">—</span>';
+    if (r.state === 'renewed') return `<span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"><i class="fa-solid fa-check"></i>Renewal quoted</span><div class="text-[11px] text-slate-400 font-mono">${escapeHtml(r.child.reference_no)}</div>`;
+    const when = r.days > 0 ? `Expires in ${r.days} day${r.days === 1 ? '' : 's'}` : r.days === 0 ? 'Expires today' : `Expired ${-r.days} day${r.days === -1 ? '' : 's'} ago`;
+    if (r.state === 'due') return `<button onclick="openProspectModal('${p.id}','renew')" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold whitespace-nowrap shadow-sm"><i class="fa-solid fa-file-circle-plus mr-1"></i>Create quotation</button><div class="text-[11px] text-red-600 mt-1">${when}</div>`;
+    return `<span class="text-xs text-slate-500 whitespace-nowrap">Expires ${fmtDMY(p.coverage_end)}</span>`;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('prospect-table-body');
+    const rows = filteredProposals();
+    const pageSize = parseInt(document.getElementById('page-size').value, 10) || 20;
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    currentPage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (currentPage - 1) * pageSize;
+    const pageRows = rows.slice(start, start + pageSize);
+
+    document.getElementById('range-info').textContent = rows.length ? `Showing ${start + 1}-${Math.min(start + pageSize, rows.length)} of ${rows.length}` : 'Showing 0 of 0';
+    document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+    document.getElementById('prev-page').disabled = currentPage <= 1;
+    document.getElementById('next-page').disabled = currentPage >= totalPages;
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400">${proposals.length ? 'No quotations match your filters.' : 'No quotations yet. Click "New Prospect" to begin.'}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = pageRows.map(p => {
+      const editable = p.status === 'QUOTED';
+      const actions = [
+        `<button onclick="viewQuotation('${p.id}')" title="View quotation form" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"><i class="fa-solid fa-eye"></i></button>`
+      ];
+      if (editable) {
+        actions.push(`<button onclick="openProspectModal('${p.id}','edit')" title="Edit" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"><i class="fa-solid fa-pen"></i></button>`);
+        actions.push(`<button onclick="deleteProspect('${p.id}')" title="Delete" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>`);
+      }
+      return `<tr class="hover:bg-slate-50/80 align-top">
+        <td class="px-5 py-4"><div class="font-semibold text-slate-800">${escapeHtml(p.ifar_name)}</div><div class="text-xs text-slate-400">${escapeHtml(p.ifar_phone)}</div></td>
+        <td class="px-5 py-4"><div class="font-bold text-slate-900">${escapeHtml(p.owner_name)}</div><div class="text-[11px] text-slate-400 font-mono">${escapeHtml(p.reference_no)}</div></td>
+        <td class="px-5 py-4"><div class="font-semibold text-slate-800 font-mono">${escapeHtml(p.vehicle_reg_no)}</div><div class="text-xs text-slate-400">${escapeHtml(p.vehicle_model)}</div></td>
+        <td class="px-5 py-4 text-xs text-slate-600 whitespace-nowrap">${fmtDMY(p.quotation_date || p.created_at)}</td>
+        <td class="px-5 py-4">${statusCell(p)}</td>
+        <td class="px-5 py-4">${renewalCell(p)}</td>
+        <td class="px-5 py-4 text-right whitespace-nowrap">${actions.join('')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ---------- Status ----------
+  async function setResponse(id, status) {
+    const p = proposals.find(x => x.id === id);
+    if (!p || effectiveStatus(p) !== 'PENDING') return;
+    const label = status === 'ACCEPTED' ? 'Accepted' : 'Declined';
+    if (!confirm(`Mark the quotation for ${p.owner_name} (${p.vehicle_reg_no}) as ${label}?`)) return;
+    const now = new Date().toISOString();
+    const { data, error } = await supabaseClient.from('motor_proposals')
+      .update({ status, responded_at: now, updated_at: now, audit_log: [...(p.audit_log || []), { action: `Marked as ${label}`, timestamp: now }] })
+      .eq('id', id).eq('status', 'QUOTED').select('id');
+    if (error) { console.error(error); return showToast(`Unable to update: ${supabaseErrorText(error)}`, 'error'); }
+    if (!data || !data.length) showToast('This quotation was already updated. The list has been refreshed.', 'error');
+    else showToast(`${label} on ${fmtDMY(now)}.`);
+    await loadProposals();
+  }
+
+  async function resetResponse(id) {
+    const p = proposals.find(x => x.id === id);
+    if (!p) return;
+    if (!confirm(`Undo "${p.status === 'ACCEPTED' ? 'Accepted' : 'Declined'}" for ${p.owner_name} and set it back to awaiting response?`)) return;
+    const now = new Date().toISOString();
+    const { error } = await supabaseClient.from('motor_proposals')
+      .update({ status: 'QUOTED', responded_at: null, updated_at: now, audit_log: [...(p.audit_log || []), { action: 'Response undone', timestamp: now }] })
+      .eq('id', id);
+    if (error) { console.error(error); return showToast(`Unable to update: ${supabaseErrorText(error)}`, 'error'); }
+    showToast('Response undone.');
+    await loadProposals();
+  }
+
+  async function deleteProspect(id) {
+    const p = proposals.find(x => x.id === id);
+    if (!p || p.status !== 'QUOTED') return showToast('Accepted or declined quotations cannot be deleted.', 'error');
+    if (!confirm(`Delete the quotation for ${p.owner_name} (${p.vehicle_reg_no})? This cannot be undone.`)) return;
+    const { data, error } = await supabaseClient.from('motor_proposals').delete().eq('id', id).eq('status', 'QUOTED').select('id');
+    if (error || !data?.length) {
+      console.error(error);
+      showToast(error ? `Unable to delete: ${supabaseErrorText(error)}` : 'Unable to delete. The quotation may have been accepted or declined.', 'error');
+    } else {
+      showToast('Quotation deleted.');
+    }
+    await loadProposals();
+  }
+
+  function viewQuotation(id) {
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
+    window.location.href = `${QUOTE_PAGE}?id=${encodeURIComponent(id)}`;
+  }
+
+  // ---------- Form → quotation form (nothing saved here) ----------
+  function handleViewQuotation(e) {
+    e.preventDefault();
+    const record = {};
+    Object.entries(FIELD_MAP).forEach(([el, col]) => { record[col] = document.getElementById(el).value.trim() || null; });
+
+    const required = [['ifar_name', 'IFAR Name'], ['ifar_phone', 'IFAR Phone Number'], ['owner_name', 'Name of Vehicle Owner'],
+      ['owner_id_no', 'Identification Number'], ['vehicle_reg_no', 'Vehicle Registration Number'], ['vehicle_type', 'Type of Vehicle'],
+      ['vehicle_model', 'Vehicle Brand and Model'], ['usage_type', 'Vehicle Usage Type']];
+    const missing = required.filter(([k]) => !record[k]).map(([, label]) => label);
+    if (missing.length) return showToast(`Please fill in: ${missing.join(', ')}.`, 'error');
+    if (record.prospect_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.prospect_email)) return showToast('Prospect email address looks invalid.', 'error');
+
+    const covFrom = document.getElementById('in-cov-from').value, covTo = document.getElementById('in-cov-to').value;
+    if ((covFrom && !covTo) || (!covFrom && covTo)) return showToast('Please pick both the coverage start and end dates.', 'error');
+    if (covFrom && covTo && covTo <= covFrom) return showToast('Coverage end date must be after the start date.', 'error');
+    record.coverage_start = covFrom || null;
+    record.coverage_end = covTo || null;
+
+    const { quotes, errors } = buildQuotes();
+    if (errors.length) return showToast(errors[0], 'error');
+    record.quotes = quotes;
+
+    const original = editingId ? proposals.find(x => x.id === editingId) : null;
+    if (original) record.reference_no = original.reference_no;
+    record.selected_quote = previousSelection;
+
+    const draft = { mode: editingId ? 'edit' : (renewedFrom ? 'renew' : 'new'), id: editingId, renewed_from: renewedFrom, record };
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (err) {
+      console.error(err);
+      return showToast('Your browser blocked temporary storage, so the quotation form cannot open.', 'error');
+    }
+    window.location.href = `${QUOTE_PAGE}?draft=1`;
+  }
+
+  // Coming back from the quotation form without saving: reopen the form with the entries
+  function restoreDraftIfReturning() {
+    let draft = null;
+    try { draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); } catch (_) {}
+    if (!draft || !draft.returning) return;
+    draft.returning = false;
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (_) {}
+    fillModal(draft.record, { mode: draft.mode, titleMode: 'draft', editingId: draft.id, renewedFrom: draft.renewed_from });
+    previousSelection = draft.record.selected_quote || null;
+    showToast('Your unsaved entries were restored. Click "View Quotation Form" to continue.');
+  }
+
+  function blankFormState() {
+    return {
+      operators: OPERATORS.map(() => ({
+        checked: false, sum_covered: '', windscreen_covered: '', road_tax: '', admin_fee: DEFAULT_ADMIN_FEE, note: '',
+        options: Object.fromEntries(COVERAGE_OPTIONS.map(o => [o.code, { checked: false, takaful_price: '', road_tax: '' }]))
+      }))
+    };
+  }
+
+  function formStateFromQuotes(quotes) {
+    const st = blankFormState();
+    (quotes || []).forEach(q => {
+      const i = OPERATORS.findIndex(o => o.name === q.operator);
+      if (i < 0) return;
+      const op = st.operators[i];
+      op.checked = true;
+      op.sum_covered = q.sum_covered ?? '';
+      op.windscreen_covered = q.windscreen_covered ?? '';
+      op.road_tax = q.road_tax ?? '';
+      op.admin_fee = q.admin_fee ?? DEFAULT_ADMIN_FEE;
+      op.note = q.note || '';
+      (q.options || []).forEach(o => {
+        if (!op.options[o.code]) return;
+        op.options[o.code] = { checked: true, takaful_price: o.takaful_price ?? '', road_tax: o.road_tax ?? op.road_tax };
+      });
+    });
+    return st;
+  }
+
+  const FIELD_MAP = {
+    'in-ifar-name': 'ifar_name', 'in-ifar-phone': 'ifar_phone', 'in-owner-name': 'owner_name', 'in-owner-id': 'owner_id_no',
+    'in-reg-no': 'vehicle_reg_no', 'in-vehicle-type': 'vehicle_type', 'in-vehicle-model': 'vehicle_model', 'in-engine-cc': 'engine_capacity',
+    'in-usage-type': 'usage_type', 'in-vehicle-address': 'vehicle_address', 'in-prospect-email': 'prospect_email',
+    'in-prospect-phone': 'prospect_phone', 'in-ncd': 'ncd', 'in-coverage-term': 'coverage_term'
+  };
+
+  // mode: 'new' | 'edit' | 'renew'   source: a saved row or an unsaved draft record
+  function openProspectModal(id, mode) {
+    mode = mode || (id ? 'edit' : 'new');
+    const p = id ? proposals.find(x => x.id === id) : null;
+    if (mode === 'edit' && (!p || p.status !== 'QUOTED')) return showToast('Accepted or declined quotations can no longer be edited.', 'error');
+    if (mode === 'renew' && !p) return;
+    fillModal(mode === 'new' ? null : p, {
+      mode,
+      editingId: mode === 'edit' ? p.id : null,
+      renewedFrom: mode === 'renew' ? p.id : null
+    });
+  }
+
+  function fillModal(record, ctx) {
+    const form = document.getElementById('form-prospect');
+    form.reset();
+    // drop any extra options added for older values
+    ['in-vehicle-type', 'in-usage-type'].forEach(id => {
+      const sel = document.getElementById(id);
+      [...sel.options].forEach(o => { if (o.dataset.extra) o.remove(); });
+    });
+    editingId = ctx.editingId || null;
+    renewedFrom = ctx.renewedFrom || null;
+    previousSelection = null;
+    formState = blankFormState();
+    loadCoverageTerm('');
+
+    if (record) {
+      Object.entries(FIELD_MAP).forEach(([el, col]) => {
+        const input = document.getElementById(el);
+        const val = record[col] ?? '';
+        if (input.tagName === 'SELECT' && val && ![...input.options].some(o => o.value === val)) {
+          const opt = new Option(val, val); opt.dataset.extra = '1'; input.add(opt);
+        }
+        input.value = val;
+      });
+      if (record.coverage_start || record.coverage_end) {
+        document.getElementById('in-cov-from').value = record.coverage_start || '';
+        document.getElementById('in-cov-to').value = record.coverage_end || '';
+        updateCoverageTerm();
+      } else {
+        loadCoverageTerm(record.coverage_term);
+      }
+      formState = formStateFromQuotes(record.quotes);
+      if (ctx.mode === 'edit') previousSelection = record.selected_quote || null;
+    }
+
+    if (ctx.mode === 'renew' && !ctx.titleMode) {
+      // next coverage year: day after the old expiry, for one year
+      const oldEnd = document.getElementById('in-cov-to').value;
+      if (oldEnd) {
+        document.getElementById('in-cov-from').value = addDaysIso(oldEnd, 1);
+        onCoverageFromChange();
+      }
+    }
+
+    const titles = {
+      new:   ['New Prospect', 'Motor Takaful Quotation'],
+      edit:  [`Edit Quotation · ${record?.reference_no || ''}`, 'Changes apply to this quotation only'],
+      renew: ['Renewal Quotation', `Duplicated from ${record?.reference_no || ''}. Saving creates a new quotation; the original stays unchanged.`],
+      draft: ['Continue Unsaved Quotation', 'Restored from the quotation form. Nothing has been saved yet.']
+    };
+    const [t, sub] = titles[ctx.titleMode || ctx.mode];
+    document.getElementById('modal-title').textContent = t;
+    document.getElementById('modal-subtitle').textContent = sub;
+
+    renderPart1();
+    renderPart2();
+    document.getElementById('modal-prospect').classList.remove('hidden');
+  }
+
+  function closeProspectModal() {
+    document.getElementById('modal-prospect').classList.add('hidden');
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
+  }
+
+  // Part 1: operator cards
+  function renderPart1() {
+    document.getElementById('part1-container').innerHTML = OPERATORS.map((op, i) => {
+      const on = formState.operators[i].checked;
+      return `<button type="button" onclick="toggleOperator(${i})"
+          class="text-left flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors ${on ? 'border-brand-navy bg-indigo-50/60' : 'border-slate-200 hover:border-slate-300 bg-white'}">
+        <span class="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'bg-brand-navy border-brand-navy text-white' : 'border-slate-300'}">${on ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}</span>
+        <span class="w-1.5 h-8 rounded-full shrink-0" style="background:${op.color}"></span>
+        <span class="text-sm font-semibold text-slate-800">${escapeHtml(op.name)}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function toggleOperator(i) {
+    formState.operators[i].checked = !formState.operators[i].checked;
+    renderPart1();
+    renderPart2();
+  }
+
+  // Part 2: per-operator pricing
+  function renderPart2() {
+    const container = document.getElementById('part2-container');
+    const active = OPERATORS.map((op, i) => ({ op, i })).filter(x => formState.operators[x.i].checked);
+    if (!active.length) {
+      container.innerHTML = `<div class="border-2 border-dashed border-slate-200 rounded-xl px-4 py-8 text-center text-sm text-slate-400">
+        <i class="fa-solid fa-lock mr-1"></i> Select at least one Takaful operator in Part 1 to continue.</div>`;
+      return;
+    }
+
+    container.innerHTML = active.map(({ op, i }) => {
+      const st = formState.operators[i];
+      const pills = COVERAGE_OPTIONS.map((o, n) => {
+        const on = st.options[o.code].checked;
+        return `<button type="button" onclick="toggleOption(${i},'${o.code}')"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium text-left transition-colors ${on ? 'border-brand-navy bg-brand-navy text-white' : 'border-slate-300 text-slate-700 hover:border-slate-400 bg-white'}">
+          <span class="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${on ? 'border-white' : 'border-slate-400'}">${on ? '<span class="w-1.5 h-1.5 rounded-full bg-white"></span>' : ''}</span>
+          <span>${n + 1}. ${escapeHtml(o.name)}</span>
+        </button>`;
+      }).join('');
+
+      const chosen = COVERAGE_OPTIONS.filter(o => st.options[o.code].checked);
+      const rows = chosen.map((o, n) => {
+        const r = st.options[o.code];
+        return `<tr class="border-t border-slate-100">
+          <td class="px-3 py-2 text-xs text-slate-400">${n + 1}</td>
+          <td class="px-3 py-2 text-xs font-semibold text-slate-700">${escapeHtml(o.name)}</td>
+          <td class="px-2 py-1.5"><input type="number" min="0" step="0.01" value="${escapeHtml(r.takaful_price)}" placeholder="0.00"
+              oninput="setOptField(${i},'${o.code}','takaful_price',this.value)" class="field money !py-1.5 !text-xs w-28"></td>
+          <td class="px-2 py-1.5"><input type="number" min="0" step="0.01" value="${escapeHtml(r.road_tax)}" placeholder="0.00" data-roadtax="${i}" data-code="${o.code}"
+              oninput="setOptField(${i},'${o.code}','road_tax',this.value)" class="field money !py-1.5 !text-xs w-24"></td>
+          <td class="px-3 py-2 text-xs money text-slate-600" data-adminfee="${i}">${fmtMoney(st.admin_fee)}</td>
+          <td class="px-3 py-2 text-xs money font-bold text-slate-900" id="total-${i}-${o.code}">${fmtMoney(optionTotal(st, o.code))}</td>
+        </tr>`;
+      }).join('');
+
+      return `<div class="border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="flex items-center gap-3 px-4 py-3" style="background:${op.tint}">
+          <span class="w-1.5 h-7 rounded-full" style="background:${op.color}"></span>
+          <p class="font-bold text-sm text-slate-900">${escapeHtml(op.name)}</p>
+        </div>
+        <div class="p-4 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div><label class="field-label">Sum Covered (RM) *</label>
+              <input type="number" min="0" step="0.01" value="${escapeHtml(st.sum_covered)}" placeholder="e.g. 94900" oninput="setOpField(${i},'sum_covered',this.value)" class="field money"></div>
+            <div><label class="field-label">Windscreen Covered (RM)</label>
+              <input type="number" min="0" step="0.01" value="${escapeHtml(st.windscreen_covered)}" placeholder="e.g. 3000" oninput="setOpField(${i},'windscreen_covered',this.value)" class="field money"></div>
+            <div><label class="field-label">Road Tax Amount (RM)</label>
+              <input type="number" min="0" step="0.01" value="${escapeHtml(st.road_tax)}" placeholder="e.g. 359.40" oninput="setOpField(${i},'road_tax',this.value)" class="field money"></div>
+            <div><label class="field-label">Admin Amount (RM)</label>
+              <input type="number" min="0" step="0.01" value="${escapeHtml(st.admin_fee)}" oninput="setOpField(${i},'admin_fee',this.value)" class="field money"></div>
+          </div>
+          <div>
+            <p class="field-label">Coverage options (select one or more)</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${pills}</div>
+          </div>
+          ${chosen.length ? `
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="px-3 py-2 bg-slate-50 text-xs text-slate-600 flex flex-wrap gap-x-6 gap-y-1 border-b border-slate-200">
+              <span>Takaful Operator: <b class="text-slate-800">${escapeHtml(op.name)}</b></span>
+              <span>Sum Covered: <b class="text-slate-800" id="sc-label-${i}">${st.sum_covered ? 'RM ' + fmtMoney(st.sum_covered) : '—'}</b></span>
+              <span>Windscreen Covered: <b class="text-slate-800" id="ws-label-${i}">${st.windscreen_covered ? 'RM ' + fmtMoney(st.windscreen_covered) : '—'}</b></span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[620px]">
+                <thead class="text-[11px] text-slate-500 bg-white">
+                  <tr><th class="px-3 py-2 text-left font-semibold">Option #</th><th class="px-3 py-2 text-left font-semibold">Option Name</th>
+                  <th class="px-3 py-2 text-left font-semibold">Takaful Price</th><th class="px-3 py-2 text-left font-semibold">Road Tax</th>
+                  <th class="px-3 py-2 text-right font-semibold">Admin Fee</th><th class="px-3 py-2 text-right font-semibold">Total</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>` : `<p class="text-xs text-slate-400">Choose coverage options above to fill in the prices.</p>`}
+          <div><label class="field-label">Benefit note (optional, shown under the table)</label>
+            <input value="${escapeHtml(st.note)}" placeholder="e.g. Free towing 150 km" oninput="setOpField(${i},'note',this.value)" class="field"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleOption(i, code) {
+    const st = formState.operators[i];
+    const opt = st.options[code];
+    opt.checked = !opt.checked;
+    if (opt.checked && (opt.road_tax === '' || opt.road_tax == null)) opt.road_tax = st.road_tax;
+    renderPart2();
+  }
+
+  function setOpField(i, field, value) {
+    const st = formState.operators[i];
+    st[field] = value;
+    if (field === 'road_tax') {
+      // Road tax box fills every option row of this operator
+      Object.values(st.options).forEach(o => { o.road_tax = value; });
+      document.querySelectorAll(`[data-roadtax="${i}"]`).forEach(inp => { inp.value = value; });
+    }
+    if (field === 'admin_fee') {
+      document.querySelectorAll(`[data-adminfee="${i}"]`).forEach(td => { td.textContent = fmtMoney(value); });
+    }
+    if (field === 'windscreen_covered') {
+      const wl = document.getElementById(`ws-label-${i}`);
+      if (wl) wl.textContent = value ? 'RM ' + fmtMoney(value) : '—';
+    }
+    if (field === 'sum_covered') {
+      const lbl = document.getElementById(`sc-label-${i}`);
+      if (lbl) lbl.textContent = value ? 'RM ' + fmtMoney(value) : '—';
+    }
+    refreshTotals(i);
+  }
+
+  function setOptField(i, code, field, value) {
+    formState.operators[i].options[code][field] = value;
+    refreshTotals(i);
+  }
+
+  function optionTotal(st, code) {
+    const o = st.options[code];
+    return num(o.takaful_price) + num(o.road_tax) + num(st.admin_fee);
+  }
+
+  function refreshTotals(i) {
+    const st = formState.operators[i];
+    COVERAGE_OPTIONS.forEach(o => {
+      const cell = document.getElementById(`total-${i}-${o.code}`);
+      if (cell) cell.textContent = fmtMoney(optionTotal(st, o.code));
+    });
+  }
+
+  function buildQuotes() {
+    const quotes = [];
+    const errors = [];
+    OPERATORS.forEach((op, i) => {
+      const st = formState.operators[i];
+      if (!st.checked) return;
+      const chosen = COVERAGE_OPTIONS.filter(o => st.options[o.code].checked);
+      if (!(num(st.sum_covered) > 0)) errors.push(`${op.short}: enter the Sum Covered.`);
+      if (!chosen.length) errors.push(`${op.short}: select at least one coverage option.`);
+      chosen.forEach(o => {
+        if (!(num(st.options[o.code].takaful_price) > 0)) errors.push(`${op.short}: enter the Takaful Price for "${o.name}".`);
+      });
+      quotes.push({
+        operator: op.name,
+        sum_covered: round2(num(st.sum_covered)),
+        windscreen_covered: st.windscreen_covered === '' || st.windscreen_covered == null ? null : round2(num(st.windscreen_covered)),
+        road_tax: round2(num(st.road_tax)),
+        admin_fee: round2(num(st.admin_fee)),
+        note: (st.note || '').trim(),
+        options: chosen.map(o => ({
+          code: o.code, name: o.name,
+          takaful_price: round2(num(st.options[o.code].takaful_price)),
+          road_tax: round2(num(st.options[o.code].road_tax)),
+          admin_fee: round2(num(st.admin_fee))
+        }))
+      });
+    });
+    if (!quotes.length) errors.unshift('Select at least one Takaful operator in Part 1.');
+    return { quotes, errors };
+  }
+
+  // ---------- Coverage term date pickers ----------
+  // Stored in coverage_term as "DD/MM/YYYY – DD/MM/YYYY" so the link page and PDF show it as before.
+  function openDatePicker(input) {
+    try { if (input.showPicker) input.showPicker(); } catch (_) { /* browser opens it on its own */ }
+  }
+  function isoToDmy(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  function dmyToIso(dmy) {
+    const m = String(dmy || '').trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+  }
+  function onCoverageFromChange() {
+    const from = document.getElementById('in-cov-from').value;
+    if (from) {
+      const d = new Date(from + 'T00:00:00');
+      d.setFullYear(d.getFullYear() + 1);
+      d.setDate(d.getDate() - 1);
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('in-cov-to').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+    updateCoverageTerm();
+  }
+  function updateCoverageTerm() {
+    const from = document.getElementById('in-cov-from').value;
+    const to = document.getElementById('in-cov-to').value;
+    document.getElementById('in-cov-to').min = from || '';
+    document.getElementById('in-coverage-term').value = from && to ? `${isoToDmy(from)} – ${isoToDmy(to)}` : '';
+  }
+  function loadCoverageTerm(text) {
+    const parts = String(text || '').split(/\s*[–—-]\s+|\s+[–—-]\s*|\s+to\s+/i);
+    document.getElementById('in-cov-from').value = dmyToIso(parts[0]);
+    document.getElementById('in-cov-to').value = dmyToIso(parts[1]);
+    updateCoverageTerm();
+    // keep any older free-text value that could not be read as dates
+    if (!document.getElementById('in-coverage-term').value) document.getElementById('in-coverage-term').value = text || '';
+  }
+
+  // Turn a Supabase/PostgREST error into something readable (and keep the technical part for support)
+  function supabaseErrorText(err) {
+    if (!err) return 'Unknown error.';
+    const msg = err.message || String(err);
+    if (err.code === '23514' || /check constraint/i.test(msg)) return `a value was rejected by the database (${msg}). Run motor-proposal-fix.sql.`;
+    if (err.code === '42501' || /row-level security|permission denied/i.test(msg)) return `permission denied by the database (${msg}). Run motor-proposal-fix.sql.`;
+    if (err.code === 'PGRST204' || /schema cache|column/i.test(msg)) return `the database table is missing a column (${msg}). Run motor-proposal-fix.sql.`;
+    return msg + (err.code ? ` [${err.code}]` : '');
+  }
+
+  // ---------- Utilities ----------
+  function todayIso() {
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  function addDaysIso(iso, days) {
+    const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + days);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  function daysBetween(fromIso, toIso) {
+    return Math.round((new Date(toIso + 'T00:00:00') - new Date(fromIso + 'T00:00:00')) / 86400000);
+  }
+  function fmtDMY(v) {
+    if (!v) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const [y, m, d] = v.split('-'); return `${d}/${m}/${y}`; }
+    const d = new Date(v), pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+
+  function num(v) { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; }
+  function round2(n) { return Math.round(n * 100) / 100; }
+  function fmtMoney(v) { return num(v).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtDate(v) { return v ? new Date(v).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : '<span class="text-slate-300">—</span>'; }
+  function fmtDateTime(v) { return v ? new Date(v).toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+
+  function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `${type === 'error' ? 'bg-rose-600' : 'bg-slate-900'} text-white px-4 py-3 rounded-xl shadow-xl text-xs font-medium flex items-center space-x-2 transition-all opacity-0 translate-y-2`;
+    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i><span>${escapeHtml(message)}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.remove('opacity-0', 'translate-y-2'), 10);
+    setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, type === 'error' ? 9000 : 3800);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+  }
+</script>
+</body>
+</html>
