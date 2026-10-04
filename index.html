@@ -10,9 +10,21 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ===== Supabase connection (standalone) =====
+  // THIS portal's database (saves and lists quotations).
+  //   User portal  → user database
+  //   Admin portal → admin database (same values as ADMIN below; the Share button then hides itself)
   const SUPABASE_URL = 'https://ppcxuptjzhrqkcdokryk.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_kDTuxJSCyWeIxEa-1c3Aug_-Cs5S7Fq';
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  // ADMIN database ("Share with Admin" sends quotations here)
+  const ADMIN_SUPABASE_URL = 'https://olgijssakwgttfnomnwz.supabase.co';
+  const ADMIN_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_xMblASeeRQt-UTFxsi9vNw_p4hWUjUP';
+
+  const IS_ADMIN_PORTAL = SUPABASE_URL.replace(/\/+$/, '') === ADMIN_SUPABASE_URL.replace(/\/+$/, '');
+  const adminClient = IS_ADMIN_PORTAL ? supabaseClient
+    : window.supabase.createClient(ADMIN_SUPABASE_URL, ADMIN_SUPABASE_PUBLISHABLE_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-admin-db' } });
 </script>
 <style>
   body { font-family: 'Inter', sans-serif; }
@@ -53,7 +65,7 @@
 
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
       <div>
-        <h2 class="text-2xl font-bold text-slate-900">Motor Takaful Quotation</h2>
+        <h2 class="text-2xl font-bold text-slate-900">Motor Takaful Quotation <span id="portal-badge" class="align-middle text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"></span></h2>
         <p class="text-slate-500 text-sm mt-1">Prepare motor takaful quotations, record the client's response, and create renewal quotations before expiry.</p>
       </div>
       <button onclick="openProspectModal()" class="inline-flex items-center justify-center bg-brand-navy hover:opacity-90 text-white font-medium px-5 py-2.5 rounded-xl shadow-sm space-x-2">
@@ -283,6 +295,7 @@
       const pos = e.target.selectionStart; e.target.value = e.target.value.toUpperCase(); e.target.setSelectionRange(pos, pos);
     }));
 
+    document.getElementById('portal-badge').textContent = IS_ADMIN_PORTAL ? 'Admin' : 'User';
     await loadProposals();
     restoreDraftIfReturning();
   });
@@ -423,16 +436,78 @@
         actions.push(`<button onclick="openProspectModal('${p.id}','edit')" title="Edit" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"><i class="fa-solid fa-pen"></i></button>`);
         actions.push(`<button onclick="deleteProspect('${p.id}')" title="Delete" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>`);
       }
+      const share = IS_ADMIN_PORTAL ? '' : `<div class="mt-1.5">${shareCell(p)}</div>`;
+      const sharedTag = IS_ADMIN_PORTAL && p.shared_from ? `<span class="ml-1 inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-semibold align-middle" title="Last shared ${fmtDMY(p.shared_at)}">Shared by user</span>` : '';
       return `<tr class="hover:bg-slate-50/80 align-top">
         <td class="px-5 py-4"><div class="font-semibold text-slate-800">${escapeHtml(p.ifar_name)}</div><div class="text-xs text-slate-400">${escapeHtml(p.ifar_phone)}</div></td>
-        <td class="px-5 py-4"><div class="font-bold text-slate-900">${escapeHtml(p.owner_name)}</div><div class="text-[11px] text-slate-400 font-mono">${escapeHtml(p.reference_no)}</div></td>
+        <td class="px-5 py-4"><div class="font-bold text-slate-900">${escapeHtml(p.owner_name)}</div><div class="text-[11px] text-slate-400 font-mono">${escapeHtml(p.reference_no)}${sharedTag}</div></td>
         <td class="px-5 py-4"><div class="font-semibold text-slate-800 font-mono">${escapeHtml(p.vehicle_reg_no)}</div><div class="text-xs text-slate-400">${escapeHtml(p.vehicle_model)}</div></td>
         <td class="px-5 py-4 text-xs text-slate-600 whitespace-nowrap">${fmtDMY(p.quotation_date || p.created_at)}</td>
         <td class="px-5 py-4">${statusCell(p)}</td>
         <td class="px-5 py-4">${renewalCell(p)}</td>
-        <td class="px-5 py-4 text-right whitespace-nowrap">${actions.join('')}</td>
+        <td class="px-5 py-4 text-right whitespace-nowrap">${actions.join('')}${share}</td>
       </tr>`;
     }).join('');
+  }
+
+  // ---------- Share with Admin (one quotation → admin database, overwrite on re-share) ----------
+  // NOT_SHARED | SHARED | CHANGED (edited or responded after the last share)
+  function shareState(p) {
+    if (!p.shared_at) return 'NOT_SHARED';
+    const changed = p.updated_at && new Date(p.updated_at) > new Date(p.shared_at);
+    return changed ? 'CHANGED' : 'SHARED';
+  }
+
+  function shareCell(p) {
+    const st = shareState(p);
+    const label = st === 'NOT_SHARED' ? 'Share with Admin' : 'Share again';
+    const style = st === 'CHANGED' ? 'border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                : st === 'SHARED' ? 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                : 'border-brand-navy brand-navy hover:bg-brand-navy hover:text-white';
+    const note = st === 'SHARED' ? `<div class="text-[11px] text-emerald-700 mt-1"><i class="fa-solid fa-check mr-0.5"></i>Shared on ${fmtDMY(p.shared_at)}</div>`
+               : st === 'CHANGED' ? `<div class="text-[11px] text-amber-700 mt-1"><i class="fa-solid fa-circle-exclamation mr-0.5"></i>Changed since last share</div>`
+               : '';
+    return `<div class="inline-flex flex-col items-end"><button id="share-btn-${p.id}" onclick="shareWithAdmin('${p.id}')"
+        class="px-2.5 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap ${style}"><i class="fa-solid fa-share-from-square mr-1"></i>${label}</button>${note}</div>`;
+  }
+
+  async function shareWithAdmin(id) {
+    if (IS_ADMIN_PORTAL) return;
+    const btn = document.getElementById(`share-btn-${id}`);
+    // always share the latest saved version
+    const { data: row, error: readErr } = await supabaseClient.from('motor_proposals').select('*').eq('id', id).maybeSingle();
+    if (readErr) return showToast(`Unable to read the quotation: ${supabaseErrorText(readErr)}`, 'error');
+    if (!row) { await loadProposals(); return showToast('This quotation no longer exists.', 'error'); }
+    if (row.shared_at && !confirm(`${row.reference_no} was shared on ${fmtDMY(row.shared_at)}.\n\nShare again? The admin copy will be overwritten with this version.`)) return;
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Sharing...'; }
+    const now = new Date().toISOString();
+    const payload = { ...row, shared_at: now, shared_from: 'USER_PORTAL' };
+
+    let res = await adminClient.from('motor_proposals').upsert(payload, { onConflict: 'id' });
+    if (res.error && res.error.code === '23503' && payload.renewed_from) {
+      // renewal of a quotation that was never shared: keep the copy, drop the link
+      res = await adminClient.from('motor_proposals').upsert({ ...payload, renewed_from: null }, { onConflict: 'id' });
+    }
+    if (res.error) {
+      console.error(res.error);
+      renderTable();
+      const e = res.error;
+      const hint = (e.code === 'PGRST204' || /column/i.test(e.message || '')) ? ' Run motor-share-admin-db.sql in the admin database.'
+                 : e.code === '23505' ? ' Run motor-share-admin-db.sql in the admin database (it allows the same reference number).'
+                 : '';
+      return showToast(`Not shared: ${e.message || e}.${hint}`, 'error');
+    }
+
+    // remember the share time in this portal (does not count as a change)
+    const { error: markErr } = await supabaseClient.from('motor_proposals').update({ shared_at: now }).eq('id', id);
+    if (markErr) {
+      console.error(markErr);
+      showToast(`Shared with admin, but the share date could not be saved here: ${supabaseErrorText(markErr)}. Run motor-share-user-db.sql in the user database.`, 'error');
+    } else {
+      showToast(`${row.reference_no} shared with admin.`);
+    }
+    await loadProposals();
   }
 
   // ---------- Status ----------

@@ -12,8 +12,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ===== Supabase connection (standalone) =====
-  const SUPABASE_URL = 'https://olgijssakwgttfnomnwz.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_xMblASeeRQt-UTFxsi9vNw_p4hWUjUP';
+  // THIS portal's database — must match SUPABASE_URL / KEY in index.html
+  //   User portal → user database   |   Admin portal → admin database
+  const SUPABASE_URL = 'https://ppcxuptjzhrqkcdokryk.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_kDTuxJSCyWeIxEa-1c3Aug_-Cs5S7Fq';
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 </script>
 <style>
